@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITSPereira Academy - Code Quest Pro (Nube)</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0f172a; --panel-bg: #1e293b; --primary: #3b82f6;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --boss: #fbbf24; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --glow: 0 0 15px rgba(59, 130, 246, 0.4);
+            --glow-boss: 0 0 20px rgba(251, 191, 36, 0.6);
+            --glow-success: 0 0 20px rgba(16, 185, 129, 0.6);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Nunito', sans-serif; background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .title-font { font-family: 'Press Start 2P', cursive; }
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { color: var(--primary); font-size: 1.5rem; text-shadow: var(--glow); line-height: 1.5;}
+
+        .screen { background-color: var(--panel-bg); border: 2px solid var(--primary); border-radius: 12px; padding: 25px; width: 100%; max-width: 950px; box-shadow: var(--glow); display: none; animation: fadeIn 0.4s ease; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: var(--text-muted); }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background-color: #0f172a; color: white; font-family: 'Nunito', sans-serif; outline: none; transition: 0.3s;}
+        input:focus { border-color: var(--primary); }
+
+        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; font-family: 'Nunito', sans-serif; font-size: 0.9rem; text-align: center;}
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+        .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 4px 0 #1e3a8a; }
+        .btn-primary:hover:not(:disabled) { background-color: #2563eb; transform: translateY(2px); box-shadow: 0 2px 0 #1e3a8a;}
+        .btn-success { background-color: var(--success); color: white; box-shadow: 0 4px 0 #064e3b; }
+        .btn-success:hover:not(:disabled) { background-color: #059669; transform: translateY(2px); box-shadow: 0 2px 0 #064e3b;}
+        .btn-danger { background-color: var(--danger); color: white; }
+        
+        .btn-google {
+            background-color: white; color: #444; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; font-family: 'Nunito'; cursor: pointer; border: none; font-size: 1rem; transition: 0.3s; margin-top: 20px; text-transform: none;
+        }
+        .btn-google:hover { background-color: #f1f1f1; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(255,255,255,0.2); }
+        .btn-google img { width: 24px; }
+
+        .header-dash { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 15px; }
+        .stats { display: flex; gap: 20px; color: var(--warning); font-weight: bold; font-size: 1.1rem;}
+        .progress-bar-container { background: #0f172a; border-radius: 10px; height: 20px; width: 100%; border: 1px solid #334155; position: relative; overflow: hidden; box-shadow: inset 0 0 5px #000;}
+        .progress-bar { background: linear-gradient(90deg, var(--primary), var(--success)); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .module-title { font-size: 1.2rem; color: var(--text-muted); margin-top: 25px; margin-bottom: 10px; border-bottom: 2px dashed #334155; padding-bottom: 5px; }
+        .levels-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        
+        .level-card { background: #0f172a; border: 2px solid #334155; border-radius: 10px; padding: 20px; text-align: center; opacity: 0.5; cursor: not-allowed; position: relative; transition: 0.3s; }
+        .level-card.unlocked { opacity: 1; border-color: var(--primary); cursor: pointer; }
+        .level-card.unlocked:hover { transform: translateY(-5px); box-shadow: var(--glow); }
+        .level-card.completed { border-color: var(--success); background: rgba(16, 185, 129, 0.05);}
+        
+        .level-card.boss-card { border-color: #78350f; background: linear-gradient(145deg, #1e293b, #451a03); }
+        .level-card.boss-card.unlocked { border-color: var(--boss); box-shadow: var(--glow-boss); animation: pulseBoss 2s infinite;}
+        .level-card.boss-card.completed { border-color: var(--success); box-shadow: var(--glow-success); animation: none;}
+        @keyframes pulseBoss { 0% { box-shadow: 0 0 10px var(--boss); } 50% { box-shadow: 0 0 25px var(--boss); } 100% { box-shadow: 0 0 10px var(--boss); } }
+
+        .badge { font-size: 2.5rem; filter: grayscale(100%); display: block; margin: 10px 0; transition: 0.5s;}
+        .level-card.completed .badge { filter: grayscale(0%); transform: scale(1.1);}
+
+        /* CAJAS PEDAGÓGICAS Y TABLAS */
+        .competence-box { background: rgba(16, 185, 129, 0.15); border-left: 4px solid var(--success); padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 15px; color: #a7f3d0; font-size: 0.95rem; }
+        .step-box { background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--primary); padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 15px; font-size: 0.9rem; line-height: 1.6;}
+        
+        .code-anatomy-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; font-size: 0.85rem; background: #0f172a; border-radius: 8px; overflow: hidden; }
+        .code-anatomy-table th, .code-anatomy-table td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
+        .code-anatomy-table th { background: #1e293b; color: var(--primary); }
+        .code-anatomy-table tr:last-child td { border-bottom: none; }
+        .code-syntax { color: var(--success); font-family: monospace; font-weight: bold; font-size: 0.95rem;}
+
+        .lesson-box { background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px; line-height: 1.6;}
+        .boss-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .option-card { background: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 8px; font-size: 0.85rem; }
+        .option-card strong { color: var(--boss); display: block; margin-bottom: 5px;}
+        
+        .editor { width: 100%; height: 200px; background: #000; color: #0f0; font-family: monospace; font-size: 1rem; padding: 15px; border-radius: 8px; border: 1px solid #334155; resize: vertical; margin-bottom: 10px;}
+        .editor[readonly] { border-color: var(--success); color: #a7f3d0; background: #064e3b; cursor: default; }
+        
+        .console-output { background: #0f172a; border-left: 4px solid var(--warning); padding: 15px; border-radius: 0 8px 8px 0; font-family: monospace; color: var(--warning); display: none; margin-bottom: 15px; white-space: pre-line;}
+        .attempts-box { text-align: right; color: var(--warning); font-weight: bold; margin-bottom: 10px; }
+        
+        /* FEEDBACK MOTIVACIONAL */
+        .feedback { padding: 15px; border-radius: 8px; display: none; margin-top: 15px; text-align: left; line-height: 1.5; font-size: 0.95rem; animation: fadeIn 0.3s;}
+        .fb-error { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 2px solid var(--danger); border-left-width: 8px;}
+        .fb-success { background: rgba(16, 185, 129, 0.1); color: #a7f3d0; border: 2px solid var(--success); border-left-width: 8px;}
+        .fb-solution { background: #020617; border: 1px solid var(--boss); padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
+        .coach-title { font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 1.1rem;}
+
+        .simulator-board { background: #1e293b; padding: 30px 20px 20px 20px; border-radius: 10px; display: flex; justify-content: center; gap: 30px; margin-bottom: 15px; border: 3px solid #334155; min-height: 120px; align-items: center; position: relative; overflow: hidden; flex-wrap: wrap; }
+        .simulator-board::before { content: 'HARDWARE BÁSICO'; position: absolute; top: 5px; left: 10px; font-size: 0.6rem; color: #64748b; font-family: 'Press Start 2P', cursive; }
+        
+        .wokwi-container { width: 100%; height: 500px; margin-bottom: 15px; display: none; border-radius: 10px; overflow: hidden; border: 3px solid var(--boss); background: #fff;}
+        .component { display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10; }
+        .led { width: 40px; height: 40px; border-radius: 50%; background: #0f172a; border: 3px solid #000; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); transition: 0.3s; }
+        .led.on-red { background: #ef4444; box-shadow: 0 0 25px #ef4444; }
+        .led.on-blue { background: #3b82f6; box-shadow: 0 0 25px #3b82f6; }
+        .led.on-green { background: #10b981; box-shadow: 0 0 25px #10b981; }
+        .led.on-yellow-half { background: #b45309; box-shadow: 0 0 10px #b45309; opacity: 0.6;}
+        .sensor-btn { width: 50px; height: 50px; background: #ef4444; border-radius: 8px; border: 4px solid #7f1d1d; border-bottom-width: 8px; transition: 0.1s; display: flex; justify-content: center; align-items: center; color: white;}
+        .sensor-btn.pressed { transform: translateY(4px); border-bottom-width: 4px; background: #dc2626; }
+        .pin-label { font-size: 0.8rem; font-family: monospace; color: #cbd5e1; background: #020617; padding: 3px 8px; border-radius: 4px; border: 1px solid #334155;}
+        
+        .toast { position: fixed; top: 20px; right: 20px; background: var(--success); color: white; padding: 15px; border-radius: 8px; display: none; font-weight: bold; z-index: 1000; box-shadow: var(--glow); animation: fadeIn 0.3s;}
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 class="title-font">ITSPereira<br>Code Quest Pro</h1>
+    </header>
+
+    <div id="toast-msg" class="toast">✅ Datos sincronizados con la nube</div>
+
+    <div id="screen-login" class="screen active">
+        <h2 style="text-align: center; margin-bottom: 20px;">Acceso a la Academia</h2>
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">Tu progreso se guarda automáticamente en los servidores de Google.</p>
+        
+        <button onclick="loginConGoogle()" class="btn-google">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google Logo">
+            Iniciar sesión con Google
+        </button>
+        
+        <div id="loading-login" style="display: none; text-align: center; margin-top: 15px; color: var(--warning);">
+            ⏳ Conectando con los servidores...
+        </div>
+    </div>
+
+    <div id="screen-dash" class="screen">
+        <div class="header-dash">
+            <div>
+                <h2 id="dash-name" style="color: var(--success);">Jugador</h2>
+                <p id="dash-email" style="font-size: 0.8rem; color: var(--text-muted);"></p>
+            </div>
+            <button onclick="logout()" class="btn btn-danger" style="width: auto; padding: 8px 15px; margin: 0;">Salir</button>
+        </div>
+        <div class="stats">
+            <span>Puntos: <span id="dash-score">0</span> XP 🏆</span>
+            <span>Progreso: <span id="dash-pct">0</span>%</span>
+        </div>
+        <div class="progress-bar-container" style="margin-top: 10px;"><div class="progress-bar" id="dash-bar"></div></div>
+
+        <div class="module-title">Módulo 1: Fundamentos Lógicos</div>
+        <div class="levels-grid">
+            <div class="level-card" id="card-lvl0" onclick="startFlow(0)"><span class="badge" id="badge-0">🟢</span><h3>Nivel 1</h3><p style="font-size: 0.8rem;">E/S Básicas</p></div>
+            <div class="level-card" id="card-lvl1" onclick="startFlow(1)"><span class="badge" id="badge-1">📘</span><h3>Nivel 2</h3><p style="font-size: 0.8rem;">Decisiones</p></div>
+            <div class="level-card boss-card" id="card-lvl2" onclick="startFlow(2)"><span class="badge" id="badge-2">👑</span><h3 style="color: var(--boss);">JEFE 1</h3><p style="font-size: 0.8rem;">Hogar Inteligente</p></div>
+        </div>
+
+        <div class="module-title">Módulo 2: Control y Sensores</div>
+        <div class="levels-grid">
+            <div class="level-card" id="card-lvl3" onclick="startFlow(3)"><span class="badge" id="badge-3">🟡</span><h3>Nivel 3</h3><p style="font-size: 0.8rem;">Ciclos For</p></div>
+            <div class="level-card" id="card-lvl4" onclick="startFlow(4)"><span class="badge" id="badge-4">🟣</span><h3>Nivel 4</h3><p style="font-size: 0.8rem;">Analógico</p></div>
+            <div class="level-card boss-card" id="card-lvl5" onclick="startFlow(5)"><span class="badge" id="badge-5">🦇</span><h3 style="color: var(--boss);">JEFE 2</h3><p style="font-size: 0.8rem;">Sensores Avanzados</p></div>
+        </div>
+
+        <div class="module-title">Módulo 3: Sistemas Complejos</div>
+        <div class="levels-grid">
+            <div class="level-card" id="card-lvl6" onclick="startFlow(6)"><span class="badge" id="badge-6">🟠</span><h3>Nivel 5</h3><p style="font-size: 0.8rem;">Arreglos</p></div>
+            <div class="level-card" id="card-lvl7" onclick="startFlow(7)"><span class="badge" id="badge-7">🔴</span><h3>Nivel 6</h3><p style="font-size: 0.8rem;">Funciones</p></div>
+            <div class="level-card boss-card" id="card-lvl8" onclick="startFlow(8)"><span class="badge" id="badge-8">🌱</span><h3 style="color: var(--boss);">JEFE FINAL</h3><p style="font-size: 0.8rem;">Proyecto Integrador</p></div>
+        </div>
+
+        <button id="btn-cert" onclick="generatePDF()" class="btn btn-primary" style="margin-top: 25px; width: 100%;">📄 Descargar Reporte de Progreso Parcial</button>
+    </div>
+
+    <div id="screen-lesson" class="screen">
+        <h2 id="les-title" style="color: var(--primary); margin-bottom: 15px;">Lección Guiada</h2>
+        
+        <div class="competence-box" id="les-comp"></div>
+        <div class="step-box">
+            <strong style="color: var(--primary);">🧠 Teoría Resumida:</strong>
+            <p id="les-stepbystep" style="margin-top: 5px;"></p>
+        </div>
+        
+        <h3 style="color: var(--warning); margin-top: 20px;">🔍 Anatomía del Código Paso a Paso:</h3>
+        <table class="code-anatomy-table" id="les-anatomy">
+            </table>
+
+        <h3 style="color: var(--success); margin-top: 20px;">🎮 Código Final del Ejemplo:</h3>
+        <p id="les-ex-desc" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;"></p>
+        <textarea id="les-ex-code" class="editor" readonly></textarea>
+        
+        <div class="simulator-board" id="ex-sim-board" style="border-color: var(--success);"></div>
+        <div id="console-sim" class="console-output"></div>
+        
+        <button onclick="simulateExample()" class="btn btn-success title-font" style="width: 100%;" id="btn-sim-start">▶ COMPRENDER Y SIMULAR</button>
+        <button onclick="goToChallenge()" class="btn btn-primary" style="margin-top: 20px; width: 100%;" id="btn-to-challenge" disabled>Ir al Reto ⚡</button>
+        <button onclick="showScreen('screen-dash')" class="btn" style="margin-top: 10px; background: #334155; color: white; width: 100%;">Volver al Mapa</button>
+    </div>
+
+    <div id="screen-challenge" class="screen">
+        <h2 id="ch-title" style="color: var(--warning); margin-bottom: 10px;">Reto Oficial</h2>
+        
+        <div class="competence-box" id="ch-comp"></div>
+        <div class="step-box" id="ch-step-container" style="display: none;">
+            <strong style="color: var(--primary);">🧠 Plan de Arquitectura:</strong>
+            <p id="ch-stepbystep" style="margin-top: 5px;"></p>
+        </div>
+
+        <div class="lesson-box" id="ch-mission" style="border-color: var(--warning); font-size: 1.1rem;"></div>
+
+        <div class="simulator-board" id="sim-board"></div>
+        <div class="wokwi-container" id="wokwi-board"></div>
+
+        <div class="attempts-box">Intentos Restantes: <span id="ch-attempts">3</span></div>
+
+        <p id="ch-instructions" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">Escribe el código completo (setup y loop) para cumplir la misión:</p>
+        <textarea id="ch-editor" class="editor" placeholder="void setup() {\n  // Configura pines aquí\n}\n\nvoid loop() {\n  // Tu lógica principal aquí\n}"></textarea>
+
+        <button onclick="runCode()" class="btn btn-primary title-font" style="width: 100%;" id="btn-run-start">▶ EVALUAR CÓDIGO</button>
+
+        <div id="fb-area" class="feedback"></div>
+        
+        <div id="solution-area" class="fb-solution">
+            <div class="coach-title">🛡️ Zona de Rescate</div>
+            <p style="color: var(--boss); margin-bottom: 10px;">El aprendizaje nunca se detiene. Estudia esta solución correcta, cópiala y pégala arriba para entender cómo se hacía y poder avanzar.</p>
+            <textarea id="solution-code-box" class="editor" readonly style="height: 250px; margin-bottom:0;"></textarea>
+        </div>
+
+        <button onclick="goToNextLevel()" class="btn btn-success title-font" style="margin-top: 15px; width: 100%; display: none;" id="btn-next-level">⏭ SIGUIENTE NIVEL</button>
+        <button onclick="showScreen('screen-dash')" class="btn" style="margin-top: 15px; background: #334155; color: white; width: 100%;">Volver al Mapa</button>
+    </div>
+
+    <script>
+        /* ================= SISTEMA SEGURO DE AUDIO Y CONFETI ================= */
+        let audioCtx;
+        function initAudio() {
+            try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+        }
+        
+        function playSound(type) {
+            try {
+                if(!audioCtx) return;
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); 
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); 
+                    osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3); 
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.5);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch(e) { console.log("Audio no soportado."); }
+        }
+
+        function safeConfetti() {
+            try {
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#10b981', '#3b82f6', '#fbbf24'] });
+                }
+            } catch (e) { console.log("Confeti bloqueado."); }
+        }
+
+        /* ========================================================================= */
+        /* CONFIGURACIÓN EXACTA DE FIREBASE (Con los datos del usuario)              */
+        /* ========================================================================= */
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNBy-QKS5eNSinEI5ROOhR94YGKvbA0cg",
+            authDomain: "codequestpro-78796.firebaseapp.com",
+            projectId: "codequestpro-78796",
+            storageBucket: "codequestpro-78796.firebasestorage.app",
+            messagingSenderId: "383335669814",
+            appId: "1:383335669814:web:70d1fd4e04b77aca63f897"
+        };
+        
+        // Inicializar Google Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const firestore = firebase.firestore();
+
+        /* ================= FRASES MOTIVACIONALES ================= */
+        const motivationalQuotes = [
+            "¡No te rindas! La programación se trata de intentar y aprender de los errores.",
+            "¡Casi lo tienes! Hasta los programadores profesionales olvidan un punto y coma (;).",
+            "¡Respira profundo! Lee tu código línea por línea, la solución está ahí.",
+            "Equivocarse es parte del proceso de convertirse en un Maestro del Código.",
+            "¡Ánimo! Cada error te hace más inteligente. Revisa la pista."
+        ];
+
+        let simTimeouts = []; let simIntervals = [];
+        function addTimeout(fn, delay) { const t = setTimeout(fn, delay); simTimeouts.push(t); return t; }
+        function addInterval(fn, delay) { const i = setInterval(fn, delay); simIntervals.push(i); return i; }
+        function clearAllTimers() { 
+            simTimeouts.forEach(t => clearTimeout(t)); simTimeouts = []; 
+            simIntervals.forEach(i => clearInterval(i)); simIntervals = []; 
+        }
+
+        const BLANK_WOKWI = `<iframe src="https://wokwi.com/projects/new/arduino-uno?embed=1" width="100%" height="100%" style="border:none;"></iframe>`;
+
+        const cleanCode = (c) => c.toLowerCase().replace(/\s+/g, '');
+
+        const contentData = [
+            { type: 'normal', maxAttempts: 3, title: "Nivel 1: Entradas y Salidas", 
+              competencia: "Configurar pines en setup() y controlar hardware en loop().",
+              explicacion: "En Arduino SIEMPRE debes usar dos bloques principales: <b>void setup()</b> (se ejecuta una sola vez al encender) y <b>void loop()</b> (se repite infinitamente).",
+              anatomy: [
+                { code: "void setup() {", desc: "Abre el bloque de configuración inicial. Se ejecuta una vez." },
+                { code: "  pinMode(5, INPUT);", desc: "Configura el pin físico 5 para LEER datos (Botón)." },
+                { code: "  pinMode(8, OUTPUT);", desc: "Configura el pin físico 8 para ENVIAR energía (LED)." },
+                { code: "}", desc: "Cierra el bloque setup." },
+                { code: "void loop() {", desc: "Abre el ciclo infinito principal del programa." },
+                { code: "  if (digitalRead(5) == HIGH) {", desc: "Pregunta: ¿Está entrando energía (HIGH) por el pin 5?" },
+                { code: "    digitalWrite(8, HIGH);", desc: "Si es verdadero, envía 5 voltios (HIGH) al pin 8 para prender el LED." },
+                { code: "  }", desc: "Cierra la pregunta (if) y cierra el loop." }
+              ],
+              exDesc: "Programa completo para encender el LED 8 si el botón 5 es presionado.", 
+              exCode: "void setup() {\n  pinMode(5, INPUT);\n  pinMode(8, OUTPUT);\n}\n\nvoid loop() {\n  if (digitalRead(5) == HIGH) {\n    digitalWrite(8, HIGH);\n  }\n}", 
+              exSimText: "> Inicializando void setup()...\n> Leyendo Pin 5...\n> HIGH detectado.\n> LED Encendido.", 
+              exSetupSim: () => `<div class="component"><div class="sensor-btn" id="ex-btn5"></div><span class="pin-label">Botón 5</span></div><div class="component"><div class="led" id="ex-led8"></div><span class="pin-label">LED 8</span></div>`, 
+              exPlaySim: (cb) => { addTimeout(() => document.getElementById('ex-btn5').classList.add('pressed'), 500); addTimeout(() => { document.getElementById('ex-led8').classList.add('on-green'); if(cb) cb(); }, 1000); }, 
+              chMission: "Si el sensor en el <b>pin 2</b> está en <b>HIGH</b>, enciende la alarma en el <b>pin 13</b>.", 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup()') && s.includes('voidloop()') && s.includes('digitalread(2)==high') && s.includes('digitalwrite(13,high)'); }, 
+              hints: ["Declara ambos bloques: void setup() { ... } y void loop() { ... }", "Dentro del if, recuerda usar digitalWrite(13, HIGH);"], 
+              solutionCode: "void setup() {\n  pinMode(2, INPUT);\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  if (digitalRead(2) == HIGH) {\n    digitalWrite(13, HIGH);\n  }\n}",
+              setupSim: () => `<div class="component"><div class="sensor-btn" id="sim-btn2"></div><span class="pin-label">Sensor 2</span></div><div class="component"><div class="led" id="sim-led13"></div><span class="pin-label">Alarma 13</span></div>`, 
+              playSim: (cb) => { addTimeout(() => document.getElementById('sim-btn2').classList.add('pressed'), 500); addTimeout(() => { document.getElementById('sim-led13').classList.add('on-red'); if(cb) cb(); }, 1000); } 
+            },
+            
+            { type: 'normal', maxAttempts: 3, title: "Nivel 2: Memoria (If/Else)", 
+              competencia: "Integrar variables y bifurcaciones lógicas (Else).",
+              explicacion: "Para tomar decisiones dobles usamos 'else' (sino). Aprenderemos a guardar lecturas en una variable tipo 'int' (entero) para facilitar la lectura del código.",
+              anatomy: [
+                { code: "int luz = digitalRead(2);", desc: "Crea una caja en memoria llamada 'luz' y guarda ahí lo que lee el pin 2 (HIGH o LOW)." },
+                { code: "if (luz == HIGH) {", desc: "Verifica si el valor guardado en 'luz' es HIGH (encendido)." },
+                { code: "  digitalWrite(3, LOW);", desc: "Como hay luz, apaga el LED del pin 3 (Ahorro)." },
+                { code: "} else {", desc: "SINO (Si resulta que 'luz' era LOW)..." },
+                { code: "  digitalWrite(3, HIGH);", desc: "Enciende el LED del pin 3." }
+              ],
+              exDesc: "Programa para apagar un LED si hay luz, o encenderlo si no hay.", 
+              exCode: "void setup() {\n  pinMode(2, INPUT);\n  pinMode(3, OUTPUT);\n}\n\nvoid loop() {\n  int luz = digitalRead(2);\n  if (luz == HIGH) {\n    digitalWrite(3, LOW);\n  } else {\n    digitalWrite(3, HIGH);\n  }\n}", 
+              exSimText: "> void setup() ejecutado...\n> Luz: LOW.\n> Saltando al ELSE...\n> LED 3 Encendido.", 
+              exSetupSim: () => `<div class="component"><div class="sensor-btn" id="ex-btn2"></div><span class="pin-label">Luz 2 (LOW)</span></div><div class="component"><div class="led" id="ex-led3"></div><span class="pin-label">LED 3</span></div>`, 
+              exPlaySim: (cb) => { addTimeout(() => { document.getElementById('ex-led3').classList.add('on-blue'); if(cb) cb(); }, 1000); }, 
+              chMission: "Declara <b>int luz = digitalRead(8);</b>. Si luz es <b>HIGH</b>, apaga el <b>pin 4</b>. Sino (<b>else</b>), enciéndelo.", 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup()') && s.includes('voidloop()') && s.includes('digitalread(8)') && s.includes('else') && s.includes('digitalwrite(4,high)'); }, 
+              hints: ["No olvides inicializar los pines en el setup() usando pinMode.", "Usa la estructura completa: if() { } else { }"], 
+              solutionCode: "void setup() {\n  pinMode(8, INPUT);\n  pinMode(4, OUTPUT);\n}\n\nvoid loop() {\n  int luz = digitalRead(8);\n  if (luz == HIGH) {\n    digitalWrite(4, LOW);\n  } else {\n    digitalWrite(4, HIGH);\n  }\n}",
+              setupSim: () => `<div class="component"><div class="sensor-btn pressed" id="sim-btn8"></div><span class="pin-label">Luz 8 (HIGH)</span></div><div class="component"><div class="led on-green" id="sim-led4"></div><span class="pin-label">LED 4</span></div>`, 
+              playSim: (cb) => { addTimeout(() => { document.getElementById('sim-led4').classList.remove('on-green'); if(cb) cb(); }, 1000); } 
+            },
+
+            { type: 'wokwi', maxAttempts: 5, title: "JEFE 1: Selecciona tu Reto", 
+              competencia: "Diseñar e implementar un sistema interactivo E/S completo.",
+              explicacion: "<b>1. Planificar:</b> ¿Qué pines son sensores (INPUT) y cuáles actuadores (OUTPUT)?<br><b>2. Estructurar:</b> Escribir void setup y void loop.<br><b>3. Lógica:</b> Usar un if/else para crear la automatización.",
+              chMission: `Agrega componentes en Wokwi y programa uno de estos:<br><div class="boss-options"><div class="option-card"><strong>Luz PIR</strong>Enciende un LED con movimiento.</div><div class="option-card"><strong>Alarma Puerta</strong>Buzzer al soltar pulsador.</div><div class="option-card"><strong>Riego Manual</strong>Relé por botón.</div></div>`, 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup') && s.includes('voidloop') && s.includes('digitalread') && s.includes('digitalwrite') && s.includes('if'); }, 
+              hints: ["Asegúrate de escribir la estructura completa (setup y loop).", "Verifica las mayúsculas en Wokwi (HIGH, LOW, INPUT, OUTPUT)."], 
+              solutionCode: "int sensorPin = 2;\nint ledPin = 13;\n\nvoid setup() {\n  pinMode(sensorPin, INPUT);\n  pinMode(ledPin, OUTPUT);\n}\n\nvoid loop() {\n  int estado = digitalRead(sensorPin);\n  if (estado == HIGH) {\n    digitalWrite(ledPin, HIGH);\n  } else {\n    digitalWrite(ledPin, LOW);\n  }\n}", 
+              playSim: (cb) => { if(cb) cb(); } 
+            },
+
+            { type: 'normal', maxAttempts: 3, title: "Nivel 3: Ciclos For", 
+              competencia: "Automatizar tareas repetitivas usando la iteración 'for'.",
+              explicacion: "El ciclo 'for' repite un bloque de código las veces que le digas, ahorrándote escribir cientos de líneas copiadas y pegadas.",
+              anatomy: [
+                { code: "for (int i = 0; i < 3; i++) {", desc: "Crea un contador 'i' que empieza en 0. Se repetirá mientras sea menor a 3. Sube de 1 en 1 (i++)." },
+                { code: "  digitalWrite(7, HIGH);", desc: "Paso 1: Prende el LED." },
+                { code: "  delay(500);", desc: "Paso 2: Espera medio segundo (500 milisegundos)." },
+                { code: "  digitalWrite(7, LOW);", desc: "Paso 3: Apaga el LED." },
+                { code: "  delay(500);", desc: "Paso 4: Espera antes de reiniciar el ciclo." }
+              ],
+              exDesc: "Programa que hace parpadear un LED 3 veces seguidas y espera.", 
+              exCode: "void setup() {\n  pinMode(7, OUTPUT);\n}\n\nvoid loop() {\n  for (int i = 0; i < 3; i++) {\n    digitalWrite(7, HIGH);\n    delay(500);\n    digitalWrite(7, LOW);\n    delay(500);\n  }\n}", 
+              exSimText: "> void setup()...\n> Ciclo FOR iniciado...", 
+              exSetupSim: () => `<div class="component"><div class="led" id="ex-led7"></div><span class="pin-label">LED 7</span></div>`, 
+              exPlaySim: (cb) => { let c=0; addInterval(()=>{ document.getElementById('ex-led7').classList.toggle('on-green'); c++; if(c>=4){clearAllTimers(); if(cb)cb();} }, 400); }, 
+              chMission: "En el setup configura el <b>pin 4</b>. En el loop crea un <b>for</b> de 5 repeticiones que encienda el pin 4, espere 1000, apague y espere 1000.", 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup()') && s.includes('voidloop()') && s.includes('for(') && s.includes('delay'); }, 
+              hints: ["Adentro del for, asegúrate de poner DOS delays, uno después de prender y otro después de apagar."], 
+              solutionCode: "void setup() {\n  pinMode(4, OUTPUT);\n}\n\nvoid loop() {\n  for(int i=0; i < 5; i++) {\n    digitalWrite(4, HIGH);\n    delay(1000);\n    digitalWrite(4, LOW);\n    delay(1000);\n  }\n}",
+              setupSim: () => `<div class="component"><div class="led" id="sim-led4"></div><span class="pin-label">LED 4</span></div>`, 
+              playSim: (cb) => { let count=0; addInterval(()=>{ document.getElementById('sim-led4').classList.toggle('on-blue'); count++; if(count>=6){clearAllTimers(); if(cb)cb();} }, 300); } 
+            },
+
+            { type: 'normal', maxAttempts: 3, title: "Nivel 4: Señales Analógicas", 
+              competencia: "Modular la potencia de salida usando señales PWM.",
+              explicacion: "Las salidas PWM (analogWrite) envían pulsos rapidísimos para simular voltajes intermedios (ej. luz tenue o motores lentos). Solo funciona en pines con la marca (~).",
+              anatomy: [
+                { code: "analogWrite(9, 50);", desc: "analogWrite exige 2 cosas: el pin y la potencia. La potencia va de 0 (apagado) a 255 (fuerza máxima). 50 es muy tenue." }
+              ],
+              exDesc: "Programa para encender un pin PWM a luz tenue.", 
+              exCode: "void setup() {\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  analogWrite(9, 50);\n}", 
+              exSimText: "> Activando PWM a nivel 50/255...", 
+              exSetupSim: () => `<div class="component"><div class="led" id="ex-led9"></div><span class="pin-label">PWM 9</span></div>`, 
+              exPlaySim: (cb) => { addTimeout(() => { document.getElementById('ex-led9').style.opacity='0.3'; document.getElementById('ex-led9').classList.add('on-yellow-half'); if(cb) cb(); }, 1000); }, 
+              chMission: "Usa <b>analogWrite</b> en el <b>pin 5</b> para encender el LED a la mitad exacta de potencia (valor <b>127</b>).", 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup()') && s.includes('voidloop()') && s.includes('analogwrite(5,127)'); }, 
+              hints: ["En el setup() debes poner pinMode(5, OUTPUT).", "El comando exacto en el loop es analogWrite(5, 127);"], 
+              solutionCode: "void setup() {\n  pinMode(5, OUTPUT);\n}\n\nvoid loop() {\n  analogWrite(5, 127);\n}",
+              setupSim: () => `<div class="component"><div class="led" id="sim-led5"></div><span class="pin-label">PWM 5</span></div>`, 
+              playSim: (cb) => { addTimeout(() => { document.getElementById('sim-led5').style.opacity='0.6'; document.getElementById('sim-led5').classList.add('on-yellow-half'); if(cb) cb(); }, 1000); } 
+            },
+
+            { type: 'wokwi', maxAttempts: 5, title: "JEFE 2: Sensores Avanzados", 
+              competencia: "Acondicionar e interpretar señales analógicas.",
+              explicacion: "A diferencia de un botón, los sensores ambientales leen rangos infinitos. Usamos <code>analogRead(A0)</code> (que da valores de 0 a 1023) y evaluamos con <code>if (valor > limite)</code>.",
+              chMission: `<div class="boss-options"><div class="option-card"><strong>Radar</strong>Buzzer si la distancia < 50cm.</div><div class="option-card"><strong>Luz Auto</strong>LED si hay oscuridad (LDR).</div><div class="option-card"><strong>Clima</strong>Ventilador si calor (NTC).</div></div>`, 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup') && s.includes('voidloop') && (s.includes('analogread') || s.includes('pulsein')) && s.includes('if'); }, 
+              hints: ["Si usas LDR o Temperatura, conéctalos a los pines A0, A1... y usa analogRead()."], 
+              solutionCode: "int ldrPin = A0;\nint ledPin = 13;\n\nvoid setup() {\n  pinMode(ledPin, OUTPUT);\n}\n\nvoid loop() {\n  int luz = analogRead(ldrPin);\n  if (luz < 300) { \n    digitalWrite(ledPin, HIGH);\n  } else {\n    digitalWrite(ledPin, LOW);\n  }\n  delay(100);\n}", 
+              playSim: (cb) => { if(cb) cb(); } 
+            },
+
+            { type: 'normal', maxAttempts: 3, title: "Nivel 5: Arreglos", 
+              competencia: "Declarar arrays globales para agrupar hardware.",
+              explicacion: "En lugar de crear variables separadas para 10 LEDs, creamos un 'Arreglo' (Lista). Las listas se declaran globalmente, es decir, ¡ANTES DEL VOID SETUP!",
+              anatomy: [
+                { code: "int leds[] = {8, 9};", desc: "Fuera de toda función, creamos una lista llamada 'leds' con 2 elementos." },
+                { code: "  pinMode(leds[0], OUTPUT);", desc: "¡OJO! En programación se empieza a contar desde el 0. leds[0] se refiere al pin 8." }
+              ],
+              exDesc: "Programa que usa una lista de LEDs.", 
+              exCode: "int leds[] = {8, 9};\n\nvoid setup() {\n  pinMode(leds[0], OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(leds[0], HIGH);\n}", 
+              exSimText: "> Accediendo a arreglo global...", 
+              exSetupSim: () => `<div class="component"><div class="led" id="ex-led8a"></div><span class="pin-label">Pin 8 [0]</span></div>`, 
+              exPlaySim: (cb) => { addTimeout(() => { document.getElementById('ex-led8a').classList.add('on-red'); if(cb) cb(); }, 1000); }, 
+              chMission: "Declara globalmente <b>int leds[] = {2, 3, 4};</b>. En el loop, enciende el SEGUNDO LED usando su índice.", 
+              validate: (c) => { let s = cleanCode(c); return s.includes('leds') && s.includes('voidsetup()') && s.includes('voidloop()') && (s.includes('digitalwrite(leds[1],high)') || s.includes('digitalwrite(3,high)')); }, 
+              hints: ["Declara el arreglo en la primera línea de tu código.", "El segundo elemento es el índice [1] (leds[1])."], 
+              solutionCode: "int leds[] = {2, 3, 4};\n\nvoid setup() {\n  pinMode(leds[1], OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(leds[1], HIGH);\n}",
+              setupSim: () => `<div class="component"><div class="led" id="sim-arr1"></div><span class="pin-label">Pin 3 [1]</span></div>`, 
+              playSim: (cb) => { addTimeout(() => { document.getElementById('sim-arr1').classList.add('on-blue'); if(cb) cb(); }, 1000); } 
+            },
+
+            { type: 'normal', maxAttempts: 3, title: "Nivel 6: Funciones", 
+              competencia: "Modularizar creando bloques lógicos personalizados.",
+              explicacion: "Para no tener un `void loop()` gigante, creamos funciones propias. Las escribimos abajo y solo decimos su nombre en el loop para ejecutarlas.",
+              anatomy: [
+                { code: "void apagarTodo() {", desc: "Inventamos una función nueva y le ponemos el nombre que queramos." },
+                { code: "  digitalWrite(2, LOW);", desc: "Aquí ponemos todas las instrucciones que hará la función." },
+                { code: "void loop() { apagarTodo(); }", desc: "Simplemente llamamos a la función por su nombre en el loop principal." }
+              ],
+              exDesc: "Programa que usa una función modular para apagar componentes.", 
+              exCode: "void apagarTodo() {\n  digitalWrite(2, LOW);\n}\n\nvoid setup() {\n  pinMode(2, OUTPUT);\n}\n\nvoid loop() {\n  apagarTodo();\n}", 
+              exSimText: "> Invocando función apagarTodo()...", 
+              exSetupSim: () => `<div class="component"><div class="led on-green" id="ex-f1"></div><span class="pin-label">Sys 1</span></div>`, 
+              exPlaySim: (cb) => { addTimeout(() => { document.getElementById('ex-f1').classList.remove('on-green'); if(cb) cb(); }, 1000); }, 
+              chMission: "Crea <b>void activarAlarma()</b> y adentro enciende el pin 13 y emite <b>tone(9, 1000);</b>. Llámala desde el void loop().", 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidactivaralarma()') && s.includes('voidsetup()') && s.includes('voidloop()') && s.includes('tone(9,1000)'); }, 
+              hints: ["Asegúrate de escribir la función con sus llaves { }", "En el loop pon activarAlarma();"], 
+              solutionCode: "void activarAlarma() {\n  digitalWrite(13, HIGH);\n  tone(9, 1000);\n}\n\nvoid setup() {\n  pinMode(13, OUTPUT);\n  pinMode(9, OUTPUT);\n}\n\nvoid loop() {\n  activarAlarma();\n}",
+              setupSim: () => `<div class="component"><div class="led" id="sim-led13"></div><span class="pin-label">Alarma 13</span></div>`, 
+              playSim: (cb) => { addTimeout(() => { document.getElementById('sim-led13').classList.add('on-red'); if(cb) cb(); }, 1000); } 
+            },
+
+            { type: 'wokwi', maxAttempts: 5, title: "JEFE FINAL: Proyecto Máster", 
+              competencia: "Diseñar, simular y programar integrando librerías.",
+              explicacion: "Usamos Librerías para componentes complejos. Se llaman arriba del todo con <code>#include &lt;NombreLibreria.h&gt;</code>.",
+              chMission: `<div class="boss-options"><div class="option-card"><strong>Invernadero</strong>DHT22, LCD y Servo.</div><div class="option-card"><strong>Caja Fuerte</strong>Teclado Keypad y LCD.</div><div class="option-card"><strong>Monitor</strong>Ultrasonido y LEDs.</div></div>`, 
+              validate: (c) => { let s = cleanCode(c); return s.includes('voidsetup') && s.includes('voidloop') && s.includes('lcd') && s.includes('#include'); }, 
+              hints: ["Verifica que el #include esté en la línea 1.", "Debes inicializar el LCD en el setup()."], 
+              solutionCode: "#include <LiquidCrystal_I2C.h>\n#include <Servo.h>\n\nLiquidCrystal_I2C lcd(0x27, 16, 2);\nServo miServo;\n\nvoid setup() {\n  lcd.init();\n  lcd.backlight();\n  miServo.attach(9);\n  lcd.setCursor(0,0);\n  lcd.print(\"Invernadero ON\");\n}\n\nvoid loop() {\n  int temp = 30;\n  if(temp > 28) {\n    miServo.write(90);\n    lcd.setCursor(0,1);\n    lcd.print(\"Ventilando...\");\n  }\n  delay(1000);\n}", 
+              playSim: (cb) => { if(cb) cb(); } 
+            }
+        ];
+
+        /* ================= CONTROLADORES DEL SISTEMA ================= */
+        let user = null; let currentLevel = 0; let attempts = 0;
+        const TOTAL_LEVELS = 9;
+
+        function showScreen(id) {
+            clearAllTimers();
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        // AL HACER CLIC EN "INICIAR SESIÓN CON GOOGLE"
+        function loginConGoogle() {
+            initAudio(); // Activar audio con el click del usuario
+            document.getElementById('loading-login').style.display = 'block';
+            
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            auth.signInWithPopup(provider).then((result) => {
+                const googleUser = result.user;
+                cargarDatosDeLaNube(googleUser);
+            }).catch((error) => {
+                document.getElementById('loading-login').style.display = 'none';
+                console.error(error);
+                alert("❌ Error al iniciar sesión. Asegúrate de estar corriendo el archivo en un servidor web (como Live Server) y no como archivo local.");
+            });
+        }
+
+        function cargarDatosDeLaNube(googleUser) {
+            firestore.collection("estudiantes").doc(googleUser.email).get().then((doc) => {
+                if (doc.exists) {
+                    user = doc.data();
+                    bienvenidaUsuario();
+                } else {
+                    let gradoEstudiante = prompt("¡Bienvenido a Code Quest! Por favor ingresa tu grado (Ej: 1001, 702):");
+                    if(!gradoEstudiante) gradoEstudiante = "Sin Especificar";
+
+                    user = {
+                        email: googleUser.email,
+                        nombres: googleUser.displayName,
+                        apellidos: "", 
+                        grado: gradoEstudiante,
+                        levelReached: 0,
+                        score: 0
+                    };
+                    guardarProgresoEnLaNube();
+                    bienvenidaUsuario();
+                }
+            }).catch((error) => {
+                console.log("Error consultando la base de datos:", error);
+                alert("Error al conectar con la base de datos en la nube.");
+                document.getElementById('loading-login').style.display = 'none';
+            });
+        }
+
+        function bienvenidaUsuario() {
+            document.getElementById('loading-login').style.display = 'none';
+            const toast = document.getElementById('toast-msg');
+            toast.style.display = 'block';
+            playSound('success');
+            setTimeout(() => toast.style.display = 'none', 3000);
+            
+            updateDashboard(); 
+            showScreen('screen-dash');
+        }
+
+        function guardarProgresoEnLaNube() {
+            if(user) {
+                firestore.collection("estudiantes").doc(user.email).set(user)
+                .then(() => console.log("Progreso guardado en Firebase."))
+                .catch((error) => console.error("Error al guardar: ", error));
+            }
+        }
+
+        function logout() { 
+            auth.signOut().then(() => {
+                user = null; 
+                showScreen('screen-login'); 
+            });
+        }
+
+        function updateDashboard() {
+            document.getElementById('dash-name').innerText = `Piloto: ${user.nombres}`;
+            document.getElementById('dash-email').innerText = `Grado: ${user.grado} | Correo: ${user.email}`;
+            document.getElementById('dash-score').innerText = user.score;
+            let pct = (user.levelReached / TOTAL_LEVELS) * 100;
+            document.getElementById('dash-pct').innerText = Math.round(pct);
+            setTimeout(() => { document.getElementById('dash-bar').style.width = pct + '%'; }, 300);
+
+            for (let i = 0; i < TOTAL_LEVELS; i++) {
+                let card = document.getElementById(`card-lvl${i}`);
+                if (!card) continue;
+                if (i === 2 || i === 5 || i === 8) card.className = 'level-card boss-card';
+                else card.className = 'level-card';
+                
+                if (i <= user.levelReached) card.classList.add('unlocked');
+                if (i < user.levelReached) card.classList.add('completed');
+            }
+
+            const btnCert = document.getElementById('btn-cert');
+            if(user.levelReached >= TOTAL_LEVELS) {
+                btnCert.className = 'btn btn-success title-font';
+                btnCert.innerText = "🎓 GENERAR DIPLOMA OFICIAL";
+                btnCert.style.boxShadow = "0 0 15px var(--success)";
+            } else {
+                btnCert.className = 'btn btn-primary';
+                btnCert.innerText = "📄 Descargar Reporte de Progreso Parcial";
+                btnCert.style.boxShadow = "none";
+            }
+        }
+
+        function startFlow(lvl) {
+            if (lvl > user.levelReached) { 
+                playSound('error');
+                alert("🔒 Nivel bloqueado. Debes completar los anteriores."); 
+                return; 
+            }
+            currentLevel = lvl;
+            const data = contentData[lvl];
+
+            if (data.type === 'wokwi') {
+                goToChallenge();
+            } else {
+                document.getElementById('les-title').innerText = data.title;
+                document.getElementById('les-comp').innerHTML = `<b>🎯 Competencia a Desarrollar:</b><br>${data.competencia}`;
+                document.getElementById('les-stepbystep').innerHTML = data.explicacion;
+                
+                const table = document.getElementById('les-anatomy');
+                table.innerHTML = `<tr><th>Línea de Código</th><th>¿Qué hace exactamente?</th></tr>`;
+                if(data.anatomy) {
+                    data.anatomy.forEach(row => {
+                        table.innerHTML += `<tr><td class="code-syntax">${row.code}</td><td>${row.desc}</td></tr>`;
+                    });
+                }
+
+                document.getElementById('les-ex-desc').innerText = data.exDesc;
+                document.getElementById('les-ex-code').value = data.exCode;
+                
+                clearAllTimers();
+                document.getElementById('ex-sim-board').innerHTML = data.exSetupSim();
+                document.getElementById('btn-sim-start').disabled = false;
+                document.getElementById('console-sim').style.display = 'none';
+                
+                document.getElementById('btn-to-challenge').disabled = true;
+                document.getElementById('btn-to-challenge').innerText = "Simula el código primero 🔒";
+                showScreen('screen-lesson');
+            }
+        }
+
+        function simulateExample() {
+            const data = contentData[currentLevel];
+            const consoleBox = document.getElementById('console-sim');
+            const btnStart = document.getElementById('btn-sim-start');
+            const btnNext = document.getElementById('btn-to-challenge');
+            
+            btnStart.disabled = true;
+            consoleBox.style.display = 'block'; consoleBox.innerText = "> Compilando código virtual...";
+            document.getElementById('ex-sim-board').innerHTML = data.exSetupSim();
+            
+            addTimeout(() => {
+                consoleBox.innerText = data.exSimText;
+                data.exPlaySim(() => {
+                    playSound('success');
+                    btnNext.disabled = false;
+                    btnNext.innerText = "¡Entendido! Ir al Reto Oficial ⚡";
+                });
+            }, 800);
+        }
+
+        function goToChallenge() {
+            const data = contentData[currentLevel];
+            attempts = 0;
+            document.getElementById('ch-title').innerText = data.title;
+            document.getElementById('ch-comp').innerHTML = `<b>🎯 Competencia del Reto:</b><br>${data.competencia}`;
+            
+            const missionBox = document.getElementById('ch-mission');
+            missionBox.innerHTML = "<b>Misión: </b>" + data.chMission;
+            
+            if (data.type === 'wokwi') {
+                missionBox.classList.add('boss-box');
+                document.getElementById('ch-title').style.color = 'var(--boss)';
+                document.getElementById('ch-step-container').style.display = 'block';
+                document.getElementById('ch-stepbystep').innerHTML = data.explicacion;
+                document.getElementById('sim-board').style.display = 'none';
+                document.getElementById('wokwi-board').style.display = 'block';
+                document.getElementById('wokwi-board').innerHTML = BLANK_WOKWI;
+            } else {
+                missionBox.classList.remove('boss-box');
+                document.getElementById('ch-title').style.color = 'var(--warning)';
+                document.getElementById('ch-step-container').style.display = 'none';
+                document.getElementById('sim-board').style.display = 'flex';
+                document.getElementById('wokwi-board').style.display = 'none';
+                document.getElementById('wokwi-board').innerHTML = '';
+                document.getElementById('sim-board').innerHTML = data.setupSim();
+            }
+
+            document.getElementById('ch-attempts').innerText = data.maxAttempts;
+            document.getElementById('ch-editor').value = "";
+            document.getElementById('fb-area').style.display = 'none';
+            document.getElementById('solution-area').style.display = 'none';
+            document.getElementById('btn-next-level').style.display = 'none';
+            document.getElementById('btn-run-start').disabled = false;
+
+            showScreen('screen-challenge');
+        }
+
+        function runCode() {
+            const code = document.getElementById('ch-editor').value;
+            const data = contentData[currentLevel];
+            const fb = document.getElementById('fb-area');
+            const solArea = document.getElementById('solution-area');
+            const btnStart = document.getElementById('btn-run-start');
+            const btnNext = document.getElementById('btn-next-level');
+            
+            if (data.type === 'normal') { document.getElementById('sim-board').innerHTML = data.setupSim(); }
+
+            if (data.validate(code)) {
+                playSound('success'); safeConfetti();
+                btnStart.disabled = true; fb.style.display = 'none'; solArea.style.display = 'none';
+                
+                data.playSim(() => {
+                    let msg = data.type === 'wokwi' ? "🏆 ¡PROYECTO APROBADO! Eres todo un ingeniero." : "✅ ¡CÓDIGO PERFECTO! El hardware ha respondido correctamente.";
+                    fb.innerHTML = `<div class="coach-title">👨‍💻 Coach Dice:</div><p>${msg}</p>`;
+                    fb.className = 'feedback fb-success'; fb.style.display = 'block';
+                    btnNext.style.display = 'block';
+
+                    let pts = data.type === 'wokwi' ? 200 : 100;
+                    if (attempts > 0) pts = Math.floor(pts * 0.7);
+                    if (attempts >= data.maxAttempts) pts = 20;
+
+                    if (user.levelReached === currentLevel) {
+                        user.levelReached++; user.score += pts;
+                        
+                        // ESTA LÍNEA ES LA MAGIA QUE GUARDA EN INTERNET AL GANAR:
+                        guardarProgresoEnLaNube(); 
+                    }
+                });
+            } else {
+                playSound('error');
+                attempts++;
+                let remaining = data.maxAttempts - attempts;
+                if(remaining < 0) remaining = 0;
+                document.getElementById('ch-attempts').innerText = remaining;
+                
+                let randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+                
+                if (attempts < data.maxAttempts) {
+                    let hintText = data.hints[Math.min(attempts - 1, data.hints.length - 1)];
+                    fb.innerHTML = `<div class="coach-title">👩‍🏫 Coach Dice:</div><p>${randomQuote}</p><div style="background: rgba(245,158,11,0.2); padding: 10px; margin-top: 10px; border-radius:5px; border: 1px solid var(--warning); color: #fde68a;"><b>💡 Pista Técnica:</b> ${hintText}</div>`;
+                    fb.className = 'feedback fb-error'; fb.style.display = 'block';
+                } else {
+                    if (data.solutionCode) {
+                        fb.innerHTML = `<div class="coach-title">👩‍🏫 Coach Dice:</div><p>¡Tranquilo! Aprender requiere analizar. Revisa la solución exacta en la Zona de Rescate, cópiala y pégala para que veas cómo funciona.</p>`;
+                        fb.className = 'feedback fb-error'; fb.style.display = 'block';
+                        document.getElementById('solution-code-box').value = data.solutionCode;
+                        solArea.style.display = 'block';
+                    } else {
+                        btnStart.disabled = true;
+                    }
+                }
+            }
+        }
+
+        function goToNextLevel() { 
+            let nextLevel = currentLevel + 1;
+            if (nextLevel < TOTAL_LEVELS) {
+                updateDashboard(); 
+                startFlow(nextLevel); 
+            } else {
+                updateDashboard(); 
+                showScreen('screen-dash');
+                safeConfetti(); setTimeout(safeConfetti, 500); setTimeout(safeConfetti, 1000);
+                setTimeout(()=> alert("🎓 ¡FELICIDADES MAESTRO! Has completado Code Quest Pro. Ya puedes descargar tu diploma oficial."), 1500);
+            }
+        }
+
+        function calculateGradeAndLevel(score) {
+            let nota = 1.0;
+            if (score < 400) { nota = 1.0 + (score / 400) * 2.0; } 
+            else if (score < 800) { nota = 3.0 + ((score - 400) / 400) * 0.9; } 
+            else if (score < 1100) { nota = 4.0 + ((score - 800) / 300) * 0.4; } 
+            else { nota = 4.5 + ((score - 1100) / 100) * 0.5; }
+            if(nota > 5.0) nota = 5.0;
+
+            let nivel = "";
+            if (nota < 3.0) nivel = "Bajo";
+            else if (nota < 4.0) nivel = "Básico";
+            else if (nota < 4.6) nivel = "Alto";
+            else nivel = "Superior";
+            return { nota: nota.toFixed(1), nivel: nivel };
+        }
+
+        function generatePDF() {
+            const gradeData = calculateGradeAndLevel(user.score);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const w = doc.internal.pageSize.getWidth(); const h = doc.internal.pageSize.getHeight();
+
+            const isGraduated = user.levelReached >= TOTAL_LEVELS;
+
+            doc.setFillColor(15, 23, 42); doc.rect(0, 0, w, h, 'F');
+            doc.setDrawColor(59, 130, 246); doc.setLineWidth(2); doc.rect(5, 5, w - 10, h - 10);
+
+            doc.setTextColor(59, 130, 246); doc.setFont("helvetica", "bold"); doc.setFontSize(isGraduated ? 30 : 24);
+            doc.text(isGraduated ? "CERTIFICADO DE COMPETENCIAS" : "REPORTE DE PROGRESO ACADÉMICO", w / 2, 30, { align: "center" });
+
+            doc.setTextColor(255, 255, 255); doc.setFontSize(14);
+            let subTitle = isGraduated ? "Por superar con excelencia los retos técnicos de Code Quest, se otorga a:" : "Certificado de avance en los módulos técnicos de Code Quest para:";
+            doc.text(subTitle, w / 2, 45, { align: "center" });
+
+            doc.setFontSize(35); doc.setTextColor(16, 185, 129); 
+            let printName = user.nombres;
+            if(user.apellidos && user.apellidos.trim() !== "") printName += " " + user.apellidos;
+            doc.text(printName.toUpperCase(), w / 2, 60, { align: "center" });
+
+            doc.setFontSize(14); doc.setTextColor(255, 255, 255);
+            doc.text(`Grado: ${user.grado} | Estudiante del ITS Pereira`, w / 2, 70, { align: "center" });
+
+            let colorDesempeno = [251, 191, 36]; 
+            if (gradeData.nivel === "Superior") colorDesempeno = [16, 185, 129];
+            else if (gradeData.nivel === "Bajo") colorDesempeno = [239, 68, 68];
+            
+            doc.setTextColor(colorDesempeno[0], colorDesempeno[1], colorDesempeno[2]); doc.setFontSize(13);
+            doc.text(`Desempeño: ${gradeData.nivel} (Nota: ${gradeData.nota}) | Experiencia: ${user.score} XP`, w / 2, 80, { align: "center" });
+
+            doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.5); doc.line(30, 88, w - 30, 88);
+            doc.setFontSize(12); doc.setTextColor(255, 255, 255);
+            doc.text("COMPETENCIAS LOGRADAS EN EL PROGRAMA (ARDUINO CORE):", 35, 98);
+            
+            let yPos = 108; doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+            let achievedComps = [];
+            for (let i = 0; i < user.levelReached; i++) {
+                if (contentData[i].competencia && achievedComps.length < 5) {
+                    if (!achievedComps.includes("• " + contentData[i].competencia)) achievedComps.push("• " + contentData[i].competencia);
+                }
+            }
+            if(achievedComps.length === 0) achievedComps.push("• Lógica de programación (Fase inicial).");
+            achievedComps.forEach(comp => { doc.text(comp, 40, yPos); yPos += 8; });
+
+            const finalY = yPos + 15; 
+            doc.setDrawColor(59, 130, 246); doc.line(40, finalY, 110, finalY); doc.line(w - 110, finalY, w - 40, finalY);
+
+            doc.setFontSize(10); doc.text("Director de Tecnología", 75, finalY + 7, { align: "center" });
+            doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, w - 75, finalY + 7, { align: "center" });
+
+            doc.setFontSize(8); doc.setTextColor(148, 163, 184);
+            const token = btoa(user.email).substring(0, 10).toUpperCase();
+            doc.text(`CÓDIGO DE VALIDACIÓN: IT-P-${token}`, w / 2, h - 12, { align: "center" });
+
+            // Remover espacios para el nombre de archivo
+            let safeName = printName.replace(/\s+/g, '_');
+            doc.save(isGraduated ? `Diploma_Arduino_${user.grado}_${safeName}.pdf` : `Reporte_Progreso_${user.grado}_${safeName}.pdf`);
+        }
+    </script>
+</body>
+</html>

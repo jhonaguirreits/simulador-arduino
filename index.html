@@ -508,11 +508,20 @@
             }).catch((error) => {
                 document.getElementById('loading-login').style.display = 'none';
                 console.error(error);
-                alert("❌ Error al iniciar sesión. Asegúrate de estar corriendo el archivo en un servidor web (como Live Server) y no como archivo local.");
+                alert("❌ Error al iniciar sesión. Asegúrate de estar corriendo el archivo en un servidor web (como Live Server o GitHub Pages).");
             });
         }
 
+        // =========================================================================
+        // ESTA ES LA FUNCIÓN MEJORADA QUE TE DIRÁ EXACTAMENTE QUÉ ESTÁ FALLANDO
+        // =========================================================================
         function cargarDatosDeLaNube(googleUser) {
+            if (!googleUser || !googleUser.email) {
+                alert("Error: No se pudo obtener el correo de Google.");
+                document.getElementById('loading-login').style.display = 'none';
+                return;
+            }
+
             firestore.collection("estudiantes").doc(googleUser.email).get().then((doc) => {
                 if (doc.exists) {
                     user = doc.data();
@@ -523,7 +532,7 @@
 
                     user = {
                         email: googleUser.email,
-                        nombres: googleUser.displayName,
+                        nombres: googleUser.displayName || "Estudiante",
                         apellidos: "", 
                         grado: gradoEstudiante,
                         levelReached: 0,
@@ -533,8 +542,9 @@
                     bienvenidaUsuario();
                 }
             }).catch((error) => {
-                console.log("Error consultando la base de datos:", error);
-                alert("Error al conectar con la base de datos en la nube.");
+                // AQUÍ ESTÁ EL DETECTOR DE ERRORES:
+                console.error("Error consultando la base de datos:", error);
+                alert("❌ ERROR DE FIREBASE:\n\n" + error.message + "\n\nRevisa en la consola de Firebase si tu Base de Datos 'Firestore' está creada y tiene los permisos correctos.");
                 document.getElementById('loading-login').style.display = 'none';
             });
         }
@@ -551,10 +561,13 @@
         }
 
         function guardarProgresoEnLaNube() {
-            if(user) {
+            if(user && user.email) {
                 firestore.collection("estudiantes").doc(user.email).set(user)
                 .then(() => console.log("Progreso guardado en Firebase."))
-                .catch((error) => console.error("Error al guardar: ", error));
+                .catch((error) => {
+                    console.error("Error al guardar: ", error);
+                    alert("No se pudo guardar el progreso. Error: " + error.message);
+                });
             }
         }
 
@@ -717,7 +730,6 @@
                     if (user.levelReached === currentLevel) {
                         user.levelReached++; user.score += pts;
                         
-                        // ESTA LÍNEA ES LA MAGIA QUE GUARDA EN INTERNET AL GANAR:
                         guardarProgresoEnLaNube(); 
                     }
                 });
